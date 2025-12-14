@@ -7,8 +7,12 @@ import { Select } from './components/ui/select';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Info } from 'lucide-react';
 
-const CUBE_API_URL = import.meta.env.VITE_CUBE_API_URL || 'http://localhost:4280';
+const CUBE_API_URL = import.meta.env.VITE_CUBE_API_URL;
 const LOCAL_SERVER_URL = window.location.origin;
+
+if (!CUBE_API_URL) {
+  throw new Error('CUBE_API_URL environment variable is required. Please set it in your .env file or build configuration.');
+}
 
 interface UserAttribute {
   name: string;

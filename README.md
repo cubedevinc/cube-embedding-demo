@@ -15,13 +15,18 @@ yarn install
 cp .env.example .env
 ```
 
-3. Edit `.env` and set your API key:
+3. Edit `.env` and set your required configuration:
 ```bash
 API_KEY=your-api-key-here
+CUBE_API_URL=https://your-cube-instance.com
 ```
 
-You can also optionally configure:
-- `CUBE_API_URL` - Cube API server URL (defaults to `http://localhost:4280`)
+Required environment variables:
+- `API_KEY` - Your Cube API key
+- `CUBE_API_URL` - Cube API server URL (used by both backend and frontend)
+
+Optional environment variables:
+- `VITE_CUBE_API_URL` - Override Cube API URL for frontend only (defaults to `CUBE_API_URL`)
 - `PORT` - Server port (defaults to `3001`)
 
 ## Development

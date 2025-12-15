@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './com
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
-import { Select } from './components/ui/select';
+import { RadioGroup, RadioGroupItem } from './components/ui/radio-group';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Info } from 'lucide-react';
 
@@ -171,15 +171,19 @@ function App() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="embedType">Embed Type</Label>
-                <Select
-                  id="embedType"
+                <Label>Embed Type</Label>
+                <RadioGroup
                   value={embedType}
-                  onChange={(e) => setEmbedType(e.target.value as 'chat' | 'dashboard')}
+                  onValueChange={(value) => setEmbedType(value as 'chat' | 'dashboard')}
+                  className="flex gap-2"
                 >
-                  <option value="chat">Chat</option>
-                  <option value="dashboard">Dashboard</option>
-                </Select>
+                  <RadioGroupItem value="chat" id="embedType-chat" className="flex-1">
+                    Chat
+                  </RadioGroupItem>
+                  <RadioGroupItem value="dashboard" id="embedType-dashboard" className="flex-1">
+                    Dashboard
+                  </RadioGroupItem>
+                </RadioGroup>
               </div>
 
               {embedType === 'dashboard' && (

@@ -5,7 +5,7 @@ import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { RadioGroup, RadioGroupItem } from './components/ui/radio-group';
 import { Alert, AlertDescription } from './components/ui/alert';
-import { Info, RefreshCw, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { Info, RefreshCw, ChevronLeft, ChevronRight, Menu, ChevronDown, ChevronUp } from 'lucide-react';
 
 const CUBE_API_URL = import.meta.env.VITE_CUBE_API_URL;
 const LOCAL_SERVER_URL = window.location.origin;
@@ -31,6 +31,13 @@ interface SavedConfig {
   userAttributes: string;
   embedAfterGeneration: boolean;
   menuCollapsed?: boolean;
+  tenantId?: string;
+  tenantName?: string;
+  themeFont?: string;
+  themePrimaryColor?: string;
+  themeAnalyticsChatBackgroundColor?: string;
+  themeAnalyticsChatInputBackgroundColor?: string;
+  themeAnalyticsChatInputBorderColor?: string;
 }
 
 function App() {
@@ -70,6 +77,14 @@ function App() {
   const [iframeError, setIframeError] = useState<string | null>(null);
   const [embedAfterGeneration, setEmbedAfterGeneration] = useState(savedConfig.embedAfterGeneration ?? true);
   const [menuCollapsed, setMenuCollapsed] = useState(savedConfig.menuCollapsed ?? false);
+  const [tenantId, setTenantId] = useState(savedConfig.tenantId || '1');
+  const [tenantName, setTenantName] = useState(savedConfig.tenantName || 'My Tenant');
+  const [themeFont, setThemeFont] = useState(savedConfig.themeFont || '');
+  const [themePrimaryColor, setThemePrimaryColor] = useState(savedConfig.themePrimaryColor || '');
+  const [themeAnalyticsChatBackgroundColor, setThemeAnalyticsChatBackgroundColor] = useState(savedConfig.themeAnalyticsChatBackgroundColor || '');
+  const [themeAnalyticsChatInputBackgroundColor, setThemeAnalyticsChatInputBackgroundColor] = useState(savedConfig.themeAnalyticsChatInputBackgroundColor || '');
+  const [themeAnalyticsChatInputBorderColor, setThemeAnalyticsChatInputBorderColor] = useState(savedConfig.themeAnalyticsChatInputBorderColor || '');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Save config to localStorage whenever it changes
@@ -85,12 +100,19 @@ function App() {
         userAttributes,
         embedAfterGeneration,
         menuCollapsed,
+        tenantId,
+        tenantName,
+        themeFont,
+        themePrimaryColor,
+        themeAnalyticsChatBackgroundColor,
+        themeAnalyticsChatInputBackgroundColor,
+        themeAnalyticsChatInputBorderColor,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch (err) {
       console.warn('Failed to save config to localStorage:', err);
     }
-  }, [deploymentId, userIdType, externalId, internalId, embedType, dashboardId, userAttributes, embedAfterGeneration, menuCollapsed]);
+  }, [deploymentId, userIdType, externalId, internalId, embedType, dashboardId, userAttributes, embedAfterGeneration, menuCollapsed, tenantId, tenantName, themeFont, themePrimaryColor, themeAnalyticsChatBackgroundColor, themeAnalyticsChatInputBackgroundColor, themeAnalyticsChatInputBorderColor]);
 
   const generateSession = async (clearErrors = true) => {
     if (clearErrors) {
@@ -138,6 +160,19 @@ function App() {
         internalId?: string;
         userAttributes?: UserAttribute[];
         creatorMode?: boolean;
+        tenantId?: number;
+        tenantName?: string;
+        embedTheme?: {
+          font?: string;
+          primaryColor?: string;
+          analyticsChat?: {
+            backgroundColor?: string;
+            chatInput?: {
+              backgroundColor?: string;
+              borderColor?: string;
+            };
+          };
+        };
       } = {
         deploymentId: parseInt(deploymentId),
       };
@@ -153,9 +188,69 @@ function App() {
         // userAttributes are not allowed with internalId per API docs
       }
 
-      // Add creatorMode for app embed type
+      // Add creatorMode and tenant info for app embed type
       if (embedType === 'app') {
         requestBody.creatorMode = true;
+        requestBody.tenantId = parseInt(tenantId) || 1;
+        requestBody.tenantName = tenantName || 'My Tenant';
+      }
+
+      // Add theme if any theme fields are provided
+      const theme: {
+        font?: string;
+        primaryColor?: string;
+        analyticsChat?: {
+          backgroundColor?: string;
+          chatInput?: {
+            backgroundColor?: string;
+            borderColor?: string;
+          };
+        };
+      } = {};
+      
+      if (themeFont.trim()) {
+        theme.font = themeFont.trim();
+      }
+      if (themePrimaryColor.trim()) {
+        theme.primaryColor = themePrimaryColor.trim();
+      }
+      
+      // Build analyticsChat object if any analytics chat fields are provided
+      const analyticsChat: {
+        backgroundColor?: string;
+        chatInput?: {
+          backgroundColor?: string;
+          borderColor?: string;
+        };
+      } = {};
+      
+      if (themeAnalyticsChatBackgroundColor.trim()) {
+        analyticsChat.backgroundColor = themeAnalyticsChatBackgroundColor.trim();
+      }
+      
+      const chatInput: {
+        backgroundColor?: string;
+        borderColor?: string;
+      } = {};
+      
+      if (themeAnalyticsChatInputBackgroundColor.trim()) {
+        chatInput.backgroundColor = themeAnalyticsChatInputBackgroundColor.trim();
+      }
+      if (themeAnalyticsChatInputBorderColor.trim()) {
+        chatInput.borderColor = themeAnalyticsChatInputBorderColor.trim();
+      }
+      
+      if (chatInput.backgroundColor || chatInput.borderColor) {
+        analyticsChat.chatInput = chatInput;
+      }
+      
+      if (analyticsChat.backgroundColor || analyticsChat.chatInput) {
+        theme.analyticsChat = analyticsChat;
+      }
+      
+      // Only include embedTheme if at least one property is set
+      if (theme.font || theme.primaryColor || theme.analyticsChat) {
+        requestBody.embedTheme = theme;
       }
 
       const sessionResponse = await fetch(`${LOCAL_SERVER_URL}/api/v1/embed/generate-session`, {
@@ -405,6 +500,125 @@ function App() {
                   </AlertDescription>
                 </Alert>
               )}
+
+              <div className="space-y-3 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center justify-between w-full text-sm font-medium text-foreground hover:text-accent-foreground"
+                >
+                  <span>Advanced</span>
+                  {showAdvanced ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
+                {showAdvanced && (
+                  <div className="space-y-4 pl-2">
+                    {embedType === 'app' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenantId">Tenant ID</Label>
+                          <Input
+                            id="tenantId"
+                            type="number"
+                            placeholder="1"
+                            value={tenantId}
+                            onChange={(e) => setTenantId(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Default: 1
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenantName">Tenant Name</Label>
+                          <Input
+                            id="tenantName"
+                            type="text"
+                            placeholder="My Tenant"
+                            value={tenantName}
+                            onChange={(e) => setTenantName(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Default: My Tenant
+                          </p>
+                        </div>
+                      </>
+                    )}
+                    <div className="space-y-2 border-t border-border pt-3">
+                      <Label className="text-sm font-semibold">Embed Theme</Label>
+                      <div className="space-y-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium">Analytics Chat</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label htmlFor="themeAnalyticsChatBackgroundColor" className="text-xs">Chat BG</Label>
+                              <div className="flex gap-1">
+                                <Input
+                                  id="themeAnalyticsChatBackgroundColor"
+                                  type="text"
+                                  placeholder="#F8F9FA"
+                                  value={themeAnalyticsChatBackgroundColor}
+                                  onChange={(e) => setThemeAnalyticsChatBackgroundColor(e.target.value)}
+                                  className="h-8 text-xs flex-1"
+                                />
+                                {themeAnalyticsChatBackgroundColor && (
+                                  <div
+                                    className="w-8 h-8 rounded border border-border flex-shrink-0"
+                                    style={{ backgroundColor: themeAnalyticsChatBackgroundColor }}
+                                    title={themeAnalyticsChatBackgroundColor}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="themeAnalyticsChatInputBackgroundColor" className="text-xs">Input BG</Label>
+                              <div className="flex gap-1">
+                                <Input
+                                  id="themeAnalyticsChatInputBackgroundColor"
+                                  type="text"
+                                  placeholder="#FFFFFF"
+                                  value={themeAnalyticsChatInputBackgroundColor}
+                                  onChange={(e) => setThemeAnalyticsChatInputBackgroundColor(e.target.value)}
+                                  className="h-8 text-xs flex-1"
+                                />
+                                {themeAnalyticsChatInputBackgroundColor && (
+                                  <div
+                                    className="w-8 h-8 rounded border border-border flex-shrink-0"
+                                    style={{ backgroundColor: themeAnalyticsChatInputBackgroundColor }}
+                                    title={themeAnalyticsChatInputBackgroundColor}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="themeAnalyticsChatInputBorderColor" className="text-xs">Input Border</Label>
+                              <div className="flex gap-1">
+                                <Input
+                                  id="themeAnalyticsChatInputBorderColor"
+                                  type="text"
+                                  placeholder="#E0E0E0"
+                                  value={themeAnalyticsChatInputBorderColor}
+                                  onChange={(e) => setThemeAnalyticsChatInputBorderColor(e.target.value)}
+                                  className="h-8 text-xs flex-1"
+                                />
+                                {themeAnalyticsChatInputBorderColor && (
+                                  <div
+                                    className="w-8 h-8 rounded border border-border flex-shrink-0"
+                                    style={{ backgroundColor: themeAnalyticsChatInputBorderColor }}
+                                    title={themeAnalyticsChatInputBorderColor}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center space-x-2">
                 <input

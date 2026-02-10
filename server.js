@@ -1,7 +1,9 @@
-require('dotenv').config();
+import 'dotenv/config';
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const express = require('express');
-const path = require('path');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,7 +42,7 @@ app.post('/api/v1/embed/generate-session', async (req, res) => {
     });
 
     const data = await response.text();
-    
+
     // Forward the status code and response
     res.status(response.status);
     res.set('Content-Type', response.headers.get('Content-Type') || 'application/json');

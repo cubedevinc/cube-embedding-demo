@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   
   // Automatically set VITE_CUBE_API_URL from CUBE_API_URL if not provided
   const cubeApiUrl = env.VITE_CUBE_API_URL || env.CUBE_API_URL;
+  const cubeEmbedUrl = env.VITE_CUBE_EMBED_URL || env.CUBE_EMBED_URL || cubeApiUrl;
 
   if (!cubeApiUrl) {
     throw new Error(
@@ -24,6 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'import.meta.env.VITE_CUBE_API_URL': JSON.stringify(cubeApiUrl),
+      'import.meta.env.VITE_CUBE_EMBED_URL': JSON.stringify(cubeEmbedUrl),
     },
     server: {
       port: 3002,
@@ -31,6 +33,9 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.CUBE_API_URL || cubeApiUrl,
           changeOrigin: true,
+          headers: {
+            'Authorization': `Api-Key ${env.API_KEY}`,
+          },
         },
       },
     },

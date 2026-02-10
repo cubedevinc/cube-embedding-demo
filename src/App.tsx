@@ -1,17 +1,26 @@
-import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  Info,
+  Menu,
+  RefreshCw,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, AlertDescription } from './components/ui/alert';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { RadioGroup, RadioGroupItem } from './components/ui/radio-group';
-import { Alert, AlertDescription } from './components/ui/alert';
-import { Info, RefreshCw, ChevronLeft, ChevronRight, Menu, ChevronDown, ChevronUp } from 'lucide-react';
 
 const CUBE_API_URL = import.meta.env.VITE_CUBE_API_URL;
+const CUBE_EMBED_URL = import.meta.env.VITE_CUBE_EMBED_URL || CUBE_API_URL;
 const LOCAL_SERVER_URL = window.location.origin;
 
 if (!CUBE_API_URL) {
-  throw new Error('CUBE_API_URL environment variable is required. Please set it in your .env file or build configuration.');
+  throw new Error(
+    'CUBE_API_URL environment variable is required. Please set it in your .env file or build configuration.',
+  );
 }
 
 interface UserAttribute {
@@ -61,13 +70,23 @@ function App() {
 
   const savedConfig = loadSavedConfig();
 
-  const [deploymentId, setDeploymentId] = useState(savedConfig.deploymentId || '');
-  const [userIdType, setUserIdType] = useState<'external' | 'internal'>(savedConfig.userIdType || 'external');
-  const [externalId, setExternalId] = useState(savedConfig.externalId || 'test-user-123');
+  const [deploymentId, setDeploymentId] = useState(
+    savedConfig.deploymentId || '',
+  );
+  const [userIdType, setUserIdType] = useState<'external' | 'internal'>(
+    savedConfig.userIdType || 'external',
+  );
+  const [externalId, setExternalId] = useState(
+    savedConfig.externalId || 'test-user-123',
+  );
   const [internalId, setInternalId] = useState(savedConfig.internalId || '');
-  const [embedType, setEmbedType] = useState<'chat' | 'dashboard' | 'app'>(savedConfig.embedType || 'chat');
+  const [embedType, setEmbedType] = useState<'chat' | 'dashboard' | 'app'>(
+    savedConfig.embedType || 'chat',
+  );
   const [dashboardId, setDashboardId] = useState(savedConfig.dashboardId || '');
-  const [userAttributes, setUserAttributes] = useState(savedConfig.userAttributes || '');
+  const [userAttributes, setUserAttributes] = useState(
+    savedConfig.userAttributes || '',
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,16 +94,34 @@ function App() {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [displayEmbedUrl, setDisplayEmbedUrl] = useState<string | null>(null);
   const [iframeError, setIframeError] = useState<string | null>(null);
-  const [embedAfterGeneration, setEmbedAfterGeneration] = useState(savedConfig.embedAfterGeneration ?? true);
-  const [menuCollapsed, setMenuCollapsed] = useState(savedConfig.menuCollapsed ?? false);
+  const [embedAfterGeneration, setEmbedAfterGeneration] = useState(
+    savedConfig.embedAfterGeneration ?? true,
+  );
+  const [menuCollapsed, setMenuCollapsed] = useState(
+    savedConfig.menuCollapsed ?? false,
+  );
   const [tenantId, setTenantId] = useState(savedConfig.tenantId || '1');
-  const [tenantName, setTenantName] = useState(savedConfig.tenantName || 'My Tenant');
+  const [tenantName, setTenantName] = useState(
+    savedConfig.tenantName || 'My Tenant',
+  );
   const [themeFont, setThemeFont] = useState(savedConfig.themeFont || '');
-  const [themePrimaryColor, setThemePrimaryColor] = useState(savedConfig.themePrimaryColor || '');
-  const [themeAnalyticsChatBackgroundColor, setThemeAnalyticsChatBackgroundColor] = useState(savedConfig.themeAnalyticsChatBackgroundColor || '');
-  const [themeAnalyticsChatInputBackgroundColor, setThemeAnalyticsChatInputBackgroundColor] = useState(savedConfig.themeAnalyticsChatInputBackgroundColor || '');
-  const [themeAnalyticsChatInputBorderColor, setThemeAnalyticsChatInputBorderColor] = useState(savedConfig.themeAnalyticsChatInputBorderColor || '');
+  const [themePrimaryColor, setThemePrimaryColor] = useState(
+    savedConfig.themePrimaryColor || '',
+  );
+  const [
+    themeAnalyticsChatBackgroundColor,
+    setThemeAnalyticsChatBackgroundColor,
+  ] = useState(savedConfig.themeAnalyticsChatBackgroundColor || '');
+  const [
+    themeAnalyticsChatInputBackgroundColor,
+    setThemeAnalyticsChatInputBackgroundColor,
+  ] = useState(savedConfig.themeAnalyticsChatInputBackgroundColor || '');
+  const [
+    themeAnalyticsChatInputBorderColor,
+    setThemeAnalyticsChatInputBorderColor,
+  ] = useState(savedConfig.themeAnalyticsChatInputBorderColor || '');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Save config to localStorage whenever it changes
@@ -112,7 +149,37 @@ function App() {
     } catch (err) {
       console.warn('Failed to save config to localStorage:', err);
     }
-  }, [deploymentId, userIdType, externalId, internalId, embedType, dashboardId, userAttributes, embedAfterGeneration, menuCollapsed, tenantId, tenantName, themeFont, themePrimaryColor, themeAnalyticsChatBackgroundColor, themeAnalyticsChatInputBackgroundColor, themeAnalyticsChatInputBorderColor]);
+  }, [
+    deploymentId,
+    userIdType,
+    externalId,
+    internalId,
+    embedType,
+    dashboardId,
+    userAttributes,
+    embedAfterGeneration,
+    menuCollapsed,
+    tenantId,
+    tenantName,
+    themeFont,
+    themePrimaryColor,
+    themeAnalyticsChatBackgroundColor,
+    themeAnalyticsChatInputBackgroundColor,
+    themeAnalyticsChatInputBorderColor,
+  ]);
+
+  // Send theme updates to iframe via PostMessage API
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow && embedUrl) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: 'SET_THEME',
+          payload: theme,
+        },
+        '*',
+      );
+    }
+  }, [theme, embedUrl]);
 
   const generateSession = async (clearErrors = true) => {
     if (clearErrors) {
@@ -146,7 +213,9 @@ function App() {
           throw new Error('User attributes must be an array');
         }
       } catch (err) {
-        setError(`Invalid user attributes JSON: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        setError(
+          `Invalid user attributes JSON: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        );
         return;
       }
     }
@@ -207,14 +276,14 @@ function App() {
           };
         };
       } = {};
-      
+
       if (themeFont.trim()) {
         theme.font = themeFont.trim();
       }
       if (themePrimaryColor.trim()) {
         theme.primaryColor = themePrimaryColor.trim();
       }
-      
+
       // Build analyticsChat object if any analytics chat fields are provided
       const analyticsChat: {
         backgroundColor?: string;
@@ -223,43 +292,48 @@ function App() {
           borderColor?: string;
         };
       } = {};
-      
+
       if (themeAnalyticsChatBackgroundColor.trim()) {
-        analyticsChat.backgroundColor = themeAnalyticsChatBackgroundColor.trim();
+        analyticsChat.backgroundColor =
+          themeAnalyticsChatBackgroundColor.trim();
       }
-      
+
       const chatInput: {
         backgroundColor?: string;
         borderColor?: string;
       } = {};
-      
+
       if (themeAnalyticsChatInputBackgroundColor.trim()) {
-        chatInput.backgroundColor = themeAnalyticsChatInputBackgroundColor.trim();
+        chatInput.backgroundColor =
+          themeAnalyticsChatInputBackgroundColor.trim();
       }
       if (themeAnalyticsChatInputBorderColor.trim()) {
         chatInput.borderColor = themeAnalyticsChatInputBorderColor.trim();
       }
-      
+
       if (chatInput.backgroundColor || chatInput.borderColor) {
         analyticsChat.chatInput = chatInput;
       }
-      
+
       if (analyticsChat.backgroundColor || analyticsChat.chatInput) {
         theme.analyticsChat = analyticsChat;
       }
-      
+
       // Only include embedTheme if at least one property is set
       if (theme.font || theme.primaryColor || theme.analyticsChat) {
         requestBody.embedTheme = theme;
       }
 
-      const sessionResponse = await fetch(`${LOCAL_SERVER_URL}/api/v1/embed/generate-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const sessionResponse = await fetch(
+        `${LOCAL_SERVER_URL}/api/v1/embed/generate-session`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
         },
-        body: JSON.stringify(requestBody),
-      });
+      );
 
       if (!sessionResponse.ok) {
         const errorData = await sessionResponse.text();
@@ -272,7 +346,9 @@ function App() {
       const newSessionId = sessionData.sessionId;
 
       if (!newSessionId) {
-        throw new Error('Session ID not found in response: ' + JSON.stringify(sessionData));
+        throw new Error(
+          'Session ID not found in response: ' + JSON.stringify(sessionData),
+        );
       }
 
       setSessionId(newSessionId);
@@ -281,12 +357,12 @@ function App() {
       // Format: /embed/d/:deploymentId/{chat|dashboard/:publicId|app}?session=sessionId
       let url: string;
       if (embedType === 'chat') {
-        url = `${CUBE_API_URL}/embed/d/${deploymentId}/chat?session=${newSessionId}`;
+        url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/chat?session=${newSessionId}`;
       } else if (embedType === 'dashboard') {
-        url = `${CUBE_API_URL}/embed/d/${deploymentId}/dashboard/${dashboardId}?session=${newSessionId}`;
+        url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/dashboard/${dashboardId}?session=${newSessionId}`;
       } else {
         // app
-        url = `${CUBE_API_URL}/embed/d/${deploymentId}/app?session=${newSessionId}`;
+        url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/app?session=${newSessionId}`;
       }
 
       // Always store the URL for display
@@ -302,7 +378,9 @@ function App() {
 
       setSuccess(`Session generated successfully! Session ID: ${newSessionId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setError(
+        err instanceof Error ? err.message : 'An unknown error occurred',
+      );
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -358,7 +436,8 @@ function App() {
                 <h1 className="text-2xl font-semibold">Cube Embedding Demo</h1>
               </div>
               <p className="text-sm text-muted-foreground">
-                Test signed embedding functionality for Cube dashboards, chat, and app
+                Test signed embedding functionality for Cube dashboards, chat,
+                and app
               </p>
             </div>
 
@@ -402,10 +481,18 @@ function App() {
                   }}
                   className="flex gap-2"
                 >
-                  <RadioGroupItem value="external" id="userIdType-external" className="flex-1">
+                  <RadioGroupItem
+                    value="external"
+                    id="userIdType-external"
+                    className="flex-1"
+                  >
                     External ID
                   </RadioGroupItem>
-                  <RadioGroupItem value="internal" id="userIdType-internal" className="flex-1">
+                  <RadioGroupItem
+                    value="internal"
+                    id="userIdType-internal"
+                    className="flex-1"
+                  >
                     Internal ID
                   </RadioGroupItem>
                 </RadioGroup>
@@ -438,7 +525,8 @@ function App() {
                     onChange={(e) => setInternalId(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Email address of an internal Cube Cloud user (must exist in Cube Cloud)
+                    Email address of an internal Cube Cloud user (must exist in
+                    Cube Cloud)
                   </p>
                 </div>
               )}
@@ -447,16 +535,30 @@ function App() {
                 <Label>Embed Type</Label>
                 <RadioGroup
                   value={embedType}
-                  onValueChange={(value) => setEmbedType(value as 'chat' | 'dashboard' | 'app')}
+                  onValueChange={(value) =>
+                    setEmbedType(value as 'chat' | 'dashboard' | 'app')
+                  }
                   className="flex gap-2"
                 >
-                  <RadioGroupItem value="chat" id="embedType-chat" className="flex-1">
+                  <RadioGroupItem
+                    value="chat"
+                    id="embedType-chat"
+                    className="flex-1"
+                  >
                     Chat
                   </RadioGroupItem>
-                  <RadioGroupItem value="dashboard" id="embedType-dashboard" className="flex-1">
+                  <RadioGroupItem
+                    value="dashboard"
+                    id="embedType-dashboard"
+                    className="flex-1"
+                  >
                     Dashboard
                   </RadioGroupItem>
-                  <RadioGroupItem value="app" id="embedType-app" className="flex-1">
+                  <RadioGroupItem
+                    value="app"
+                    id="embedType-app"
+                    className="flex-1"
+                  >
                     App
                   </RadioGroupItem>
                 </RadioGroup>
@@ -478,7 +580,9 @@ function App() {
 
               {userIdType === 'external' && (
                 <div className="space-y-2">
-                  <Label htmlFor="userAttributes">User Attributes (JSON, optional)</Label>
+                  <Label htmlFor="userAttributes">
+                    User Attributes (JSON, optional)
+                  </Label>
                   <Input
                     id="userAttributes"
                     type="text"
@@ -487,7 +591,8 @@ function App() {
                     onChange={(e) => setUserAttributes(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Format: {'[{"name":"attributeName","value":"attributeValue"}]'}
+                    Format:{' '}
+                    {'[{"name":"attributeName","value":"attributeValue"}]'}
                   </p>
                 </div>
               )}
@@ -496,7 +601,9 @@ function App() {
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    When using Internal ID, user attributes, groups, and security context are not allowed. The internal user's existing permissions are used instead.
+                    When using Internal ID, user attributes, groups, and
+                    security context are not allowed. The internal user's
+                    existing permissions are used instead.
                   </AlertDescription>
                 </Alert>
               )}
@@ -547,66 +654,108 @@ function App() {
                       </>
                     )}
                     <div className="space-y-2 border-t border-border pt-3">
-                      <Label className="text-sm font-semibold">Embed Theme</Label>
+                      <Label className="text-sm font-semibold">
+                        Embed Theme
+                      </Label>
                       <div className="space-y-2">
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">Analytics Chat</Label>
+                          <Label className="text-xs font-medium">
+                            Analytics Chat
+                          </Label>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
-                              <Label htmlFor="themeAnalyticsChatBackgroundColor" className="text-xs">Chat BG</Label>
+                              <Label
+                                htmlFor="themeAnalyticsChatBackgroundColor"
+                                className="text-xs"
+                              >
+                                Chat BG
+                              </Label>
                               <div className="flex gap-1">
                                 <Input
                                   id="themeAnalyticsChatBackgroundColor"
                                   type="text"
                                   placeholder="#F8F9FA"
                                   value={themeAnalyticsChatBackgroundColor}
-                                  onChange={(e) => setThemeAnalyticsChatBackgroundColor(e.target.value)}
+                                  onChange={(e) =>
+                                    setThemeAnalyticsChatBackgroundColor(
+                                      e.target.value,
+                                    )
+                                  }
                                   className="h-8 text-xs flex-1"
                                 />
                                 {themeAnalyticsChatBackgroundColor && (
                                   <div
                                     className="w-8 h-8 rounded border border-border flex-shrink-0"
-                                    style={{ backgroundColor: themeAnalyticsChatBackgroundColor }}
+                                    style={{
+                                      backgroundColor:
+                                        themeAnalyticsChatBackgroundColor,
+                                    }}
                                     title={themeAnalyticsChatBackgroundColor}
                                   />
                                 )}
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label htmlFor="themeAnalyticsChatInputBackgroundColor" className="text-xs">Input BG</Label>
+                              <Label
+                                htmlFor="themeAnalyticsChatInputBackgroundColor"
+                                className="text-xs"
+                              >
+                                Input BG
+                              </Label>
                               <div className="flex gap-1">
                                 <Input
                                   id="themeAnalyticsChatInputBackgroundColor"
                                   type="text"
                                   placeholder="#FFFFFF"
                                   value={themeAnalyticsChatInputBackgroundColor}
-                                  onChange={(e) => setThemeAnalyticsChatInputBackgroundColor(e.target.value)}
+                                  onChange={(e) =>
+                                    setThemeAnalyticsChatInputBackgroundColor(
+                                      e.target.value,
+                                    )
+                                  }
                                   className="h-8 text-xs flex-1"
                                 />
                                 {themeAnalyticsChatInputBackgroundColor && (
                                   <div
                                     className="w-8 h-8 rounded border border-border flex-shrink-0"
-                                    style={{ backgroundColor: themeAnalyticsChatInputBackgroundColor }}
-                                    title={themeAnalyticsChatInputBackgroundColor}
+                                    style={{
+                                      backgroundColor:
+                                        themeAnalyticsChatInputBackgroundColor,
+                                    }}
+                                    title={
+                                      themeAnalyticsChatInputBackgroundColor
+                                    }
                                   />
                                 )}
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label htmlFor="themeAnalyticsChatInputBorderColor" className="text-xs">Input Border</Label>
+                              <Label
+                                htmlFor="themeAnalyticsChatInputBorderColor"
+                                className="text-xs"
+                              >
+                                Input Border
+                              </Label>
                               <div className="flex gap-1">
                                 <Input
                                   id="themeAnalyticsChatInputBorderColor"
                                   type="text"
                                   placeholder="#E0E0E0"
                                   value={themeAnalyticsChatInputBorderColor}
-                                  onChange={(e) => setThemeAnalyticsChatInputBorderColor(e.target.value)}
+                                  onChange={(e) =>
+                                    setThemeAnalyticsChatInputBorderColor(
+                                      e.target.value,
+                                    )
+                                  }
                                   className="h-8 text-xs flex-1"
                                 />
                                 {themeAnalyticsChatInputBorderColor && (
                                   <div
                                     className="w-8 h-8 rounded border border-border flex-shrink-0"
-                                    style={{ backgroundColor: themeAnalyticsChatInputBorderColor }}
+                                    style={{
+                                      backgroundColor:
+                                        themeAnalyticsChatInputBorderColor,
+                                    }}
                                     title={themeAnalyticsChatInputBorderColor}
                                   />
                                 )}
@@ -628,13 +777,20 @@ function App() {
                   onChange={(e) => setEmbedAfterGeneration(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
-                <Label htmlFor="embedAfterGeneration" className="text-sm font-normal cursor-pointer">
+                <Label
+                  htmlFor="embedAfterGeneration"
+                  className="text-sm font-normal cursor-pointer"
+                >
                   Embed after generation
                 </Label>
               </div>
 
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Generating session...' : embedAfterGeneration ? 'Generate Session & Embed' : 'Generate Session Only'}
+                {loading
+                  ? 'Generating session...'
+                  : embedAfterGeneration
+                    ? 'Generate Session & Embed'
+                    : 'Generate Session Only'}
               </Button>
             </form>
 
@@ -646,7 +802,9 @@ function App() {
 
             {success && (
               <Alert variant="success">
-                <AlertDescription className="text-xs">{success}</AlertDescription>
+                <AlertDescription className="text-xs">
+                  {success}
+                </AlertDescription>
               </Alert>
             )}
 
@@ -682,21 +840,54 @@ function App() {
                 <div>
                   <h2 className="text-lg font-semibold">Embedded Content</h2>
                   <p className="text-sm text-muted-foreground">
-                    {embedUrl ? 'Preview of the embedded content' : 'Generate a session to see the embedded content'}
+                    {embedUrl
+                      ? 'Preview of the embedded content'
+                      : 'Generate a session to see the embedded content'}
                   </p>
                 </div>
               </div>
-              {embedUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="flex items-center gap-2"
+              <div className="flex items-center gap-3">
+                <RadioGroup
+                  value={theme}
+                  onValueChange={(value) =>
+                    setTheme(value as 'light' | 'dark' | 'auto')
+                  }
+                  className="flex gap-1"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
-              )}
+                  <RadioGroupItem
+                    value="light"
+                    id="theme-light"
+                    className="flex-1 text-xs px-3"
+                  >
+                    Light
+                  </RadioGroupItem>
+                  <RadioGroupItem
+                    value="dark"
+                    id="theme-dark"
+                    className="flex-1 text-xs px-3"
+                  >
+                    Dark
+                  </RadioGroupItem>
+                  <RadioGroupItem
+                    value="auto"
+                    id="theme-auto"
+                    className="flex-1 text-xs px-3"
+                  >
+                    Auto
+                  </RadioGroupItem>
+                </RadioGroup>
+                {embedUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex-1 relative bg-muted/30">
@@ -717,7 +908,11 @@ function App() {
                 className="w-full h-full border-0"
                 allowTransparency
                 allowFullScreen
-                onError={() => setIframeError('Failed to load iframe content. Check the console for details.')}
+                onError={() =>
+                  setIframeError(
+                    'Failed to load iframe content. Check the console for details.',
+                  )
+                }
                 onLoad={() => setIframeError(null)}
               />
             ) : (
@@ -738,8 +933,12 @@ function App() {
                       />
                     </svg>
                   </div>
-                  <p className="text-sm text-muted-foreground">No embed content yet</p>
-                  <p className="text-xs text-muted-foreground">Fill out the form and click "Generate Session & Embed"</p>
+                  <p className="text-sm text-muted-foreground">
+                    No embed content yet
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Fill out the form and click "Generate Session & Embed"
+                  </p>
                 </div>
               </div>
             )}

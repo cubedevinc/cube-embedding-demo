@@ -9,6 +9,13 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { AttributeBuilder } from './components/attribute-builder';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './components/ui/dialog';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -93,6 +100,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [lastPayload, setLastPayload] = useState<string | null>(null);
+  const [payloadOpen, setPayloadOpen] = useState(false);
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [displayEmbedUrl, setDisplayEmbedUrl] = useState<string | null>(null);
   const [iframeError, setIframeError] = useState<string | null>(null);
@@ -336,6 +345,8 @@ function App() {
       if (theme.font || theme.primaryColor || theme.analyticsChat) {
         requestBody.embedTheme = theme;
       }
+
+      setLastPayload(JSON.stringify(requestBody, null, 2));
 
       const sessionResponse = await fetch(
         `${LOCAL_SERVER_URL}/api/v1/embed/generate-session`,
@@ -760,6 +771,33 @@ function App() {
                   </p>
                 </div>
               </div>
+            )}
+
+            {lastPayload && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => setPayloadOpen(true)}
+                >
+                  Inspect Request Payload
+                </Button>
+                <Dialog open={payloadOpen} onOpenChange={setPayloadOpen}>
+                  <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle>Request Payload</DialogTitle>
+                      <DialogDescription>
+                        JSON body sent to generate-session API
+                      </DialogDescription>
+                    </DialogHeader>
+                    <pre className="flex-1 overflow-auto rounded-md border bg-muted/50 p-3 text-xs font-mono text-foreground whitespace-pre-wrap break-all">
+                      {lastPayload}
+                    </pre>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
           </div>
         </div>

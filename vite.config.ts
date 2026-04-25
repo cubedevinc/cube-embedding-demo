@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_CUBE_EMBED_URL': JSON.stringify(cubeEmbedUrl),
     },
     server: {
-      port: 3002,
+      port: parseInt(env.PORT || '3002', 10),
       proxy: {
         '/api': {
           target: env.CUBE_API_URL || cubeApiUrl,

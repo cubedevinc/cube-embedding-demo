@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from './components/ui/alert';
+import { AttributeBuilder } from './components/attribute-builder';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
-import { RadioGroup, RadioGroupItem } from './components/ui/radio-group';
+import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 
 const CUBE_API_URL = import.meta.env.VITE_CUBE_API_URL;
 const CUBE_EMBED_URL = import.meta.env.VITE_CUBE_EMBED_URL || CUBE_API_URL;
@@ -47,6 +48,7 @@ interface SavedConfig {
   themeAnalyticsChatBackgroundColor?: string;
   themeAnalyticsChatInputBackgroundColor?: string;
   themeAnalyticsChatInputBorderColor?: string;
+  groups?: string;
 }
 
 function App() {
@@ -120,7 +122,9 @@ function App() {
     themeAnalyticsChatInputBorderColor,
     setThemeAnalyticsChatInputBorderColor,
   ] = useState(savedConfig.themeAnalyticsChatInputBorderColor || '');
+  const [groups, setGroups] = useState(savedConfig.groups || '');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAnalyticsChat, setShowAnalyticsChat] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -144,6 +148,7 @@ function App() {
         themeAnalyticsChatBackgroundColor,
         themeAnalyticsChatInputBackgroundColor,
         themeAnalyticsChatInputBorderColor,
+        groups,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch (err) {
@@ -166,6 +171,7 @@ function App() {
     themeAnalyticsChatBackgroundColor,
     themeAnalyticsChatInputBackgroundColor,
     themeAnalyticsChatInputBorderColor,
+    groups,
   ]);
 
   // Send theme updates to iframe via PostMessage API
@@ -251,6 +257,13 @@ function App() {
         requestBody.externalId = externalId;
         if (parsedAttributes) {
           requestBody.userAttributes = parsedAttributes;
+        }
+        const parsedGroups = groups
+          .split(',')
+          .map((g: string) => g.trim())
+          .filter(Boolean);
+        if (parsedGroups.length > 0) {
+          requestBody.groups = parsedGroups;
         }
       } else {
         requestBody.internalId = internalId;
@@ -415,7 +428,7 @@ function App() {
         <div
           className={`${
             menuCollapsed ? 'w-0 overflow-hidden' : 'w-[25%] min-w-[320px]'
-          } border-r border-border overflow-y-auto transition-all duration-300 ease-in-out relative bg-gray-50 dark:bg-gray-900`}
+          } border-r border-border overflow-y-auto transition-all duration-300 ease-in-out relative bg-muted/40`}
         >
           {/* Collapse arrow button at the top */}
           {!menuCollapsed && (
@@ -423,41 +436,26 @@ function App() {
               variant="outline"
               size="sm"
               onClick={() => setMenuCollapsed(true)}
-              className="absolute right-0 top-4 -translate-x-1/2 z-10 h-8 w-8 rounded-full p-0 border-2 bg-background shadow-md hover:bg-accent"
+              className="absolute right-0 top-3 -translate-x-1/2 z-10 h-7 w-7 rounded-full p-0 border-2 bg-background shadow-md hover:bg-accent"
               title="Collapse menu"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="p-6 space-y-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <img src="/cubejs-logo.svg" alt="Cube Logo" className="h-8" />
-                <h1 className="text-2xl font-semibold">Cube Embedding Demo</h1>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Test signed embedding functionality for Cube dashboards, chat,
-                and app
-              </p>
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <img src="/cubejs-logo.svg" alt="Cube Logo" className="h-6" />
+              <h1 className="text-lg font-semibold">Cube Embedding Demo</h1>
             </div>
 
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-1 text-xs">
-                  <div>
-                    <strong>Server:</strong> {CUBE_API_URL}
-                  </div>
-                  <div>
-                    <strong>API Key:</strong> Configured
-                  </div>
-                </div>
-              </AlertDescription>
-            </Alert>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span><strong>Server:</strong> {CUBE_API_URL}</span>
+              <span><strong>API Key:</strong> Configured</span>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="deploymentId">Deployment ID *</Label>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="deploymentId" className="shrink-0 w-28 text-right">Deployment ID *</Label>
                 <Input
                   id="deploymentId"
                   type="number"
@@ -465,42 +463,39 @@ function App() {
                   placeholder="e.g., 32"
                   value={deploymentId}
                   onChange={(e) => setDeploymentId(e.target.value)}
+                  className="flex-1"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>User ID Type *</Label>
-                <RadioGroup
+              <div className="flex items-center gap-3">
+                <Label className="shrink-0 w-28 text-right">User ID Type *</Label>
+                <Tabs
                   value={userIdType}
                   onValueChange={(value) => {
                     setUserIdType(value as 'external' | 'internal');
-                    // Clear user attributes when switching to internal (not allowed)
                     if (value === 'internal') {
                       setUserAttributes('');
+                      if (embedType === 'app') {
+                        setEmbedType('chat');
+                      }
                     }
                   }}
-                  className="flex gap-2"
+                  className="flex-1"
                 >
-                  <RadioGroupItem
-                    value="external"
-                    id="userIdType-external"
-                    className="flex-1"
-                  >
-                    External ID
-                  </RadioGroupItem>
-                  <RadioGroupItem
-                    value="internal"
-                    id="userIdType-internal"
-                    className="flex-1"
-                  >
-                    Internal ID
-                  </RadioGroupItem>
-                </RadioGroup>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="external" className="flex-1">
+                      External ID
+                    </TabsTrigger>
+                    <TabsTrigger value="internal" className="flex-1">
+                      Internal ID
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
               {userIdType === 'external' ? (
-                <div className="space-y-2">
-                  <Label htmlFor="externalId">External ID *</Label>
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="externalId" className="shrink-0 w-28 text-right">External ID *</Label>
                   <Input
                     id="externalId"
                     type="text"
@@ -508,14 +503,12 @@ function App() {
                     placeholder="e.g., user@example.com"
                     value={externalId}
                     onChange={(e) => setExternalId(e.target.value)}
+                    className="flex-1"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Unique identifier for the external user
-                  </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="internalId">Internal ID (Email) *</Label>
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="internalId" className="shrink-0 w-28 text-right">Internal ID *</Label>
                   <Input
                     id="internalId"
                     type="email"
@@ -523,78 +516,94 @@ function App() {
                     placeholder="e.g., user@example.com"
                     value={internalId}
                     onChange={(e) => setInternalId(e.target.value)}
+                    className="flex-1"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Email address of an internal Cube Cloud user (must exist in
-                    Cube Cloud)
-                  </p>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Embed Type</Label>
-                <RadioGroup
+              <div className="flex items-center gap-3">
+                <Label className="shrink-0 w-28 text-right">Embed Type</Label>
+                <Tabs
                   value={embedType}
                   onValueChange={(value) =>
                     setEmbedType(value as 'chat' | 'dashboard' | 'app')
                   }
-                  className="flex gap-2"
+                  className="flex-1"
                 >
-                  <RadioGroupItem
-                    value="chat"
-                    id="embedType-chat"
-                    className="flex-1"
-                  >
-                    Chat
-                  </RadioGroupItem>
-                  <RadioGroupItem
-                    value="dashboard"
-                    id="embedType-dashboard"
-                    className="flex-1"
-                  >
-                    Dashboard
-                  </RadioGroupItem>
-                  <RadioGroupItem
-                    value="app"
-                    id="embedType-app"
-                    className="flex-1"
-                  >
-                    App
-                  </RadioGroupItem>
-                </RadioGroup>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="chat" className="flex-1">
+                      Chat
+                    </TabsTrigger>
+                    <TabsTrigger value="dashboard" className="flex-1">
+                      Dashboard
+                    </TabsTrigger>
+                    <TabsTrigger value="app" className="flex-1" disabled={userIdType === 'internal'}>
+                      Creator Mode
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
               {embedType === 'dashboard' && (
-                <div className="space-y-2">
-                  <Label htmlFor="dashboardId">Dashboard Public ID *</Label>
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="dashboardId" className="shrink-0 w-28 text-right">Dashboard ID *</Label>
                   <Input
                     id="dashboardId"
                     type="text"
                     required={embedType === 'dashboard'}
-                    placeholder="Required for dashboard embedding"
+                    placeholder="Public ID for dashboard"
                     value={dashboardId}
                     onChange={(e) => setDashboardId(e.target.value)}
+                    className="flex-1"
                   />
                 </div>
               )}
 
+              {embedType === 'app' && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="tenantId" className="shrink-0 w-28 text-right">Tenant ID</Label>
+                    <Input
+                      id="tenantId"
+                      type="number"
+                      placeholder="1"
+                      value={tenantId}
+                      onChange={(e) => setTenantId(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="tenantName" className="shrink-0 w-28 text-right">Tenant Name</Label>
+                    <Input
+                      id="tenantName"
+                      type="text"
+                      placeholder="My Tenant"
+                      value={tenantName}
+                      onChange={(e) => setTenantName(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </>
+              )}
+
               {userIdType === 'external' && (
-                <div className="space-y-2">
-                  <Label htmlFor="userAttributes">
-                    User Attributes (JSON, optional)
-                  </Label>
-                  <Input
-                    id="userAttributes"
-                    type="text"
-                    placeholder='[{"name":"city","value":"San Francisco"}]'
+                <>
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="groups" className="shrink-0 w-28 text-right">Groups</Label>
+                    <Input
+                      id="groups"
+                      type="text"
+                      placeholder="admin, viewer"
+                      value={groups}
+                      onChange={(e) => setGroups(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <AttributeBuilder
                     value={userAttributes}
-                    onChange={(e) => setUserAttributes(e.target.value)}
+                    onChange={setUserAttributes}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Format:{' '}
-                    {'[{"name":"attributeName","value":"attributeValue"}]'}
-                  </p>
-                </div>
+                </>
               )}
 
               {userIdType === 'internal' && (
@@ -614,7 +623,7 @@ function App() {
                   onClick={() => setShowAdvanced(!showAdvanced)}
                   className="flex items-center justify-between w-full text-sm font-medium text-foreground hover:text-accent-foreground"
                 >
-                  <span>Advanced</span>
+                  <span>App Customization</span>
                   {showAdvanced ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
@@ -622,167 +631,101 @@ function App() {
                   )}
                 </button>
                 {showAdvanced && (
-                  <div className="space-y-4 pl-2">
-                    {embedType === 'app' && (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="tenantId">Tenant ID</Label>
-                          <Input
-                            id="tenantId"
-                            type="number"
-                            placeholder="1"
-                            value={tenantId}
-                            onChange={(e) => setTenantId(e.target.value)}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Default: 1
-                          </p>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAnalyticsChat(!showAnalyticsChat)}
+                      className="flex items-center justify-between w-full text-xs font-medium text-muted-foreground hover:text-foreground pl-1"
+                    >
+                      <span>Analytics Chat</span>
+                      {showAnalyticsChat ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </button>
+                    {showAnalyticsChat && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor="themeAnalyticsChatBackgroundColor" className="shrink-0 w-28 text-right">Chat BG</Label>
+                          <div className="flex gap-1 flex-1">
+                            <Input
+                              id="themeAnalyticsChatBackgroundColor"
+                              type="text"
+                              placeholder="#F8F9FA"
+                              value={themeAnalyticsChatBackgroundColor}
+                              onChange={(e) => setThemeAnalyticsChatBackgroundColor(e.target.value)}
+                              className="flex-1"
+                            />
+                            {themeAnalyticsChatBackgroundColor && (
+                              <div
+                            className="w-7 h-7 rounded border border-border shrink-0"
+                            style={{ backgroundColor: themeAnalyticsChatBackgroundColor }}
+                              />
+                            )}
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="tenantName">Tenant Name</Label>
-                          <Input
-                            id="tenantName"
-                            type="text"
-                            placeholder="My Tenant"
-                            value={tenantName}
-                            onChange={(e) => setTenantName(e.target.value)}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Default: My Tenant
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor="themeAnalyticsChatInputBackgroundColor" className="shrink-0 w-28 text-right">Input BG</Label>
+                          <div className="flex gap-1 flex-1">
+                            <Input
+                              id="themeAnalyticsChatInputBackgroundColor"
+                              type="text"
+                              placeholder="#FFFFFF"
+                              value={themeAnalyticsChatInputBackgroundColor}
+                              onChange={(e) => setThemeAnalyticsChatInputBackgroundColor(e.target.value)}
+                              className="flex-1"
+                            />
+                            {themeAnalyticsChatInputBackgroundColor && (
+                              <div
+                            className="w-7 h-7 rounded border border-border shrink-0"
+                            style={{ backgroundColor: themeAnalyticsChatInputBackgroundColor }}
+                              />
+                            )}
+                          </div>
                         </div>
-                      </>
-                    )}
-                    <div className="space-y-2 border-t border-border pt-3">
-                      <Label className="text-sm font-semibold">
-                        Embed Theme
-                      </Label>
-                      <div className="space-y-2">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">
-                            Analytics Chat
-                          </Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-1">
-                              <Label
-                                htmlFor="themeAnalyticsChatBackgroundColor"
-                                className="text-xs"
-                              >
-                                Chat BG
-                              </Label>
-                              <div className="flex gap-1">
-                                <Input
-                                  id="themeAnalyticsChatBackgroundColor"
-                                  type="text"
-                                  placeholder="#F8F9FA"
-                                  value={themeAnalyticsChatBackgroundColor}
-                                  onChange={(e) =>
-                                    setThemeAnalyticsChatBackgroundColor(
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="h-8 text-xs flex-1"
-                                />
-                                {themeAnalyticsChatBackgroundColor && (
-                                  <div
-                                    className="w-8 h-8 rounded border border-border flex-shrink-0"
-                                    style={{
-                                      backgroundColor:
-                                        themeAnalyticsChatBackgroundColor,
-                                    }}
-                                    title={themeAnalyticsChatBackgroundColor}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              <Label
-                                htmlFor="themeAnalyticsChatInputBackgroundColor"
-                                className="text-xs"
-                              >
-                                Input BG
-                              </Label>
-                              <div className="flex gap-1">
-                                <Input
-                                  id="themeAnalyticsChatInputBackgroundColor"
-                                  type="text"
-                                  placeholder="#FFFFFF"
-                                  value={themeAnalyticsChatInputBackgroundColor}
-                                  onChange={(e) =>
-                                    setThemeAnalyticsChatInputBackgroundColor(
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="h-8 text-xs flex-1"
-                                />
-                                {themeAnalyticsChatInputBackgroundColor && (
-                                  <div
-                                    className="w-8 h-8 rounded border border-border flex-shrink-0"
-                                    style={{
-                                      backgroundColor:
-                                        themeAnalyticsChatInputBackgroundColor,
-                                    }}
-                                    title={
-                                      themeAnalyticsChatInputBackgroundColor
-                                    }
-                                  />
-                                )}
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              <Label
-                                htmlFor="themeAnalyticsChatInputBorderColor"
-                                className="text-xs"
-                              >
-                                Input Border
-                              </Label>
-                              <div className="flex gap-1">
-                                <Input
-                                  id="themeAnalyticsChatInputBorderColor"
-                                  type="text"
-                                  placeholder="#E0E0E0"
-                                  value={themeAnalyticsChatInputBorderColor}
-                                  onChange={(e) =>
-                                    setThemeAnalyticsChatInputBorderColor(
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="h-8 text-xs flex-1"
-                                />
-                                {themeAnalyticsChatInputBorderColor && (
-                                  <div
-                                    className="w-8 h-8 rounded border border-border flex-shrink-0"
-                                    style={{
-                                      backgroundColor:
-                                        themeAnalyticsChatInputBorderColor,
-                                    }}
-                                    title={themeAnalyticsChatInputBorderColor}
-                                  />
-                                )}
-                              </div>
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor="themeAnalyticsChatInputBorderColor" className="shrink-0 w-28 text-right">Input Border</Label>
+                          <div className="flex gap-1 flex-1">
+                            <Input
+                              id="themeAnalyticsChatInputBorderColor"
+                              type="text"
+                              placeholder="#E0E0E0"
+                              value={themeAnalyticsChatInputBorderColor}
+                              onChange={(e) => setThemeAnalyticsChatInputBorderColor(e.target.value)}
+                              className="flex-1"
+                            />
+                            {themeAnalyticsChatInputBorderColor && (
+                              <div
+                            className="w-7 h-7 rounded border border-border shrink-0"
+                            style={{ backgroundColor: themeAnalyticsChatInputBorderColor }}
+                              />
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="embedAfterGeneration"
-                  checked={embedAfterGeneration}
-                  onChange={(e) => setEmbedAfterGeneration(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <Label
-                  htmlFor="embedAfterGeneration"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  Embed after generation
-                </Label>
+              <div className="border-t border-border pt-3 flex items-center gap-3">
+                <div className="shrink-0 w-28" />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="embedAfterGeneration"
+                    checked={embedAfterGeneration}
+                    onChange={(e) => setEmbedAfterGeneration(e.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <Label
+                    htmlFor="embedAfterGeneration"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    Embed after generation
+                  </Label>
+                </div>
               </div>
 
               <Button type="submit" disabled={loading} className="w-full">
@@ -823,7 +766,7 @@ function App() {
 
         {/* Right Panel - Embed Area (75% width) */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="border-b border-border p-4 bg-gray-50 dark:bg-gray-900">
+          <div className="border-b border-border p-4 bg-muted/40">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {menuCollapsed && (
@@ -847,35 +790,6 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <RadioGroup
-                  value={theme}
-                  onValueChange={(value) =>
-                    setTheme(value as 'light' | 'dark' | 'auto')
-                  }
-                  className="flex gap-1"
-                >
-                  <RadioGroupItem
-                    value="light"
-                    id="theme-light"
-                    className="flex-1 text-xs px-3"
-                  >
-                    Light
-                  </RadioGroupItem>
-                  <RadioGroupItem
-                    value="dark"
-                    id="theme-dark"
-                    className="flex-1 text-xs px-3"
-                  >
-                    Dark
-                  </RadioGroupItem>
-                  <RadioGroupItem
-                    value="auto"
-                    id="theme-auto"
-                    className="flex-1 text-xs px-3"
-                  >
-                    Auto
-                  </RadioGroupItem>
-                </RadioGroup>
                 {embedUrl && (
                   <Button
                     variant="outline"

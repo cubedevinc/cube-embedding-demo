@@ -4,7 +4,10 @@ import {
   ChevronUp,
   Info,
   Menu,
+  Monitor,
+  Moon,
   RefreshCw,
+  Sun,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from './components/ui/alert';
@@ -38,6 +41,12 @@ interface UserAttribute {
 
 const STORAGE_KEY = 'cube-embedding-config';
 
+// Mirrors EMBED_TENANT_NAME_REGEX in console-server's GenerateSessionDTO so the
+// UI rejects an invalid tenant name before it reaches the API.
+const EMBED_TENANT_NAME_REGEX = /^[a-z][a-z0-9-]{3,34}[a-z0-9]$/;
+const EMBED_TENANT_NAME_MESSAGE =
+  'Tenant name must start with a letter, end with a letter or number, and contain only lowercase letters, numbers, or hyphens (length 5-36).';
+
 interface SavedConfig {
   deploymentId: string;
   userIdType: 'external' | 'internal';
@@ -48,14 +57,14 @@ interface SavedConfig {
   userAttributes: string;
   embedAfterGeneration: boolean;
   menuCollapsed?: boolean;
-  tenantId?: string;
-  tenantName?: string;
+  embedTenantName?: string;
   themeFont?: string;
   themePrimaryColor?: string;
   themeAnalyticsChatBackgroundColor?: string;
   themeAnalyticsChatInputBackgroundColor?: string;
   themeAnalyticsChatInputBorderColor?: string;
   groups?: string;
+  theme?: 'light' | 'auto' | 'dark';
 }
 
 function App() {
@@ -68,7 +77,7 @@ function App() {
         // Migrate old 'home' value to 'app'
         if (config.embedType === 'home') {
           config.embedType = 'app';
-        }
+        } 
         return config;
       }
     } catch (err) {
@@ -111,10 +120,10 @@ function App() {
   const [menuCollapsed, setMenuCollapsed] = useState(
     savedConfig.menuCollapsed ?? false,
   );
-  const [tenantId, setTenantId] = useState(savedConfig.tenantId || '1');
-  const [tenantName, setTenantName] = useState(
-    savedConfig.tenantName || 'My Tenant',
+  const [embedTenantName, setEmbedTenantName] = useState(
+    savedConfig.embedTenantName || '',
   );
+  const [embedTenantNameTouched, setEmbedTenantNameTouched] = useState(false);
   const [themeFont, setThemeFont] = useState(savedConfig.themeFont || '');
   const [themePrimaryColor, setThemePrimaryColor] = useState(
     savedConfig.themePrimaryColor || '',
@@ -134,8 +143,22 @@ function App() {
   const [groups, setGroups] = useState(savedConfig.groups || '');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showAnalyticsChat, setShowAnalyticsChat] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
+  const [theme, setTheme] = useState<'light' | 'auto' | 'dark'>(
+    savedConfig.theme || 'auto',
+  );
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Tenant name is optional, but when provided (creator mode) it must satisfy
+  // the same regex the API enforces — validate it before allowing submit.
+  const trimmedEmbedTenantName = embedTenantName.trim();
+  const embedTenantNameInvalid =
+    embedType === 'app' &&
+    trimmedEmbedTenantName.length > 0 &&
+    !EMBED_TENANT_NAME_REGEX.test(trimmedEmbedTenantName);
+  // Surface the error only once the field has been blurred, so we don't nag
+  // mid-typing. Actual validity (above) still gates submit regardless.
+  const showEmbedTenantNameError =
+    embedTenantNameInvalid && embedTenantNameTouched;
 
   // Save config to localStorage whenever it changes
   useEffect(() => {
@@ -150,14 +173,14 @@ function App() {
         userAttributes,
         embedAfterGeneration,
         menuCollapsed,
-        tenantId,
-        tenantName,
+        embedTenantName,
         themeFont,
         themePrimaryColor,
         themeAnalyticsChatBackgroundColor,
         themeAnalyticsChatInputBackgroundColor,
         themeAnalyticsChatInputBorderColor,
         groups,
+        theme,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch (err) {
@@ -173,14 +196,14 @@ function App() {
     userAttributes,
     embedAfterGeneration,
     menuCollapsed,
-    tenantId,
-    tenantName,
+    embedTenantName,
     themeFont,
     themePrimaryColor,
     themeAnalyticsChatBackgroundColor,
     themeAnalyticsChatInputBackgroundColor,
     themeAnalyticsChatInputBorderColor,
     groups,
+    theme,
   ]);
 
   // Send theme updates to iframe via PostMessage API
@@ -218,6 +241,11 @@ function App() {
       setError('Internal ID (email) is required');
       return;
     }
+    if (embedTenantNameInvalid) {
+      setEmbedTenantNameTouched(true);
+      setError(EMBED_TENANT_NAME_MESSAGE);
+      return;
+    }
 
     // Parse user attributes only for external users (not allowed with internalId)
     let parsedAttributes: UserAttribute[] | null = null;
@@ -243,9 +271,9 @@ function App() {
         externalId?: string;
         internalId?: string;
         userAttributes?: UserAttribute[];
+        groups?: string[];
         creatorMode?: boolean;
-        tenantId?: number;
-        tenantName?: string;
+        embedTenantName?: string;
         embedTheme?: {
           font?: string;
           primaryColor?: string;
@@ -279,15 +307,17 @@ function App() {
         // userAttributes are not allowed with internalId per API docs
       }
 
-      // Add creatorMode and tenant info for app embed type
+      // Add creatorMode for app embed type. embedTenantName is optional and
+      // only sent when provided (already validated against the regex above).
       if (embedType === 'app') {
         requestBody.creatorMode = true;
-        requestBody.tenantId = parseInt(tenantId) || 1;
-        requestBody.tenantName = tenantName || 'My Tenant';
+        if (trimmedEmbedTenantName) {
+          requestBody.embedTenantName = trimmedEmbedTenantName;
+        }
       }
 
       // Add theme if any theme fields are provided
-      const theme: {
+      const embedThemeConfig: {
         font?: string;
         primaryColor?: string;
         analyticsChat?: {
@@ -300,10 +330,10 @@ function App() {
       } = {};
 
       if (themeFont.trim()) {
-        theme.font = themeFont.trim();
+        embedThemeConfig.font = themeFont.trim();
       }
       if (themePrimaryColor.trim()) {
-        theme.primaryColor = themePrimaryColor.trim();
+        embedThemeConfig.primaryColor = themePrimaryColor.trim();
       }
 
       // Build analyticsChat object if any analytics chat fields are provided
@@ -338,12 +368,16 @@ function App() {
       }
 
       if (analyticsChat.backgroundColor || analyticsChat.chatInput) {
-        theme.analyticsChat = analyticsChat;
+        embedThemeConfig.analyticsChat = analyticsChat;
       }
 
       // Only include embedTheme if at least one property is set
-      if (theme.font || theme.primaryColor || theme.analyticsChat) {
-        requestBody.embedTheme = theme;
+      if (
+        embedThemeConfig.font ||
+        embedThemeConfig.primaryColor ||
+        embedThemeConfig.analyticsChat
+      ) {
+        requestBody.embedTheme = embedThemeConfig;
       }
 
       setLastPayload(JSON.stringify(requestBody, null, 2));
@@ -388,6 +422,10 @@ function App() {
         // app
         url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/app?session=${newSessionId}`;
       }
+
+      // Pin the current light/dark scheme on load via ?theme. The SET_THEME
+      // postMessage (sent on change and on iframe load) overrides this at runtime.
+      url += `&theme=${theme}`;
 
       // Always store the URL for display
       setDisplayEmbedUrl(url);
@@ -571,30 +609,35 @@ function App() {
               )}
 
               {embedType === 'app' && (
-                <>
-                  <div className="flex items-center gap-3">
-                    <Label htmlFor="tenantId" className="shrink-0 w-28 text-right">Tenant ID</Label>
+                <div className="flex items-start gap-3">
+                  <Label
+                    htmlFor="embedTenantName"
+                    className="shrink-0 w-28 text-right pt-2"
+                  >
+                    Tenant Name
+                  </Label>
+                  <div className="flex-1 space-y-1">
                     <Input
-                      id="tenantId"
-                      type="number"
-                      placeholder="1"
-                      value={tenantId}
-                      onChange={(e) => setTenantId(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Label htmlFor="tenantName" className="shrink-0 w-28 text-right">Tenant Name</Label>
-                    <Input
-                      id="tenantName"
+                      id="embedTenantName"
                       type="text"
-                      placeholder="My Tenant"
-                      value={tenantName}
-                      onChange={(e) => setTenantName(e.target.value)}
-                      className="flex-1"
+                      placeholder="embed-tenant-1"
+                      value={embedTenantName}
+                      onChange={(e) => setEmbedTenantName(e.target.value)}
+                      onBlur={() => setEmbedTenantNameTouched(true)}
+                      aria-invalid={showEmbedTenantNameError}
+                      className={
+                        showEmbedTenantNameError
+                          ? 'border-destructive focus-visible:ring-destructive'
+                          : ''
+                      }
                     />
+                    {showEmbedTenantNameError && (
+                      <p className="text-xs text-destructive">
+                        {EMBED_TENANT_NAME_MESSAGE}
+                      </p>
+                    )}
                   </div>
-                </>
+                </div>
               )}
 
               {userIdType === 'external' && (
@@ -739,7 +782,11 @@ function App() {
                 </div>
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full">
+              <Button
+                type="submit"
+                disabled={loading || showEmbedTenantNameError}
+                className="w-full"
+              >
                 {loading
                   ? 'Generating session...'
                   : embedAfterGeneration
@@ -828,6 +875,27 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <Tabs
+                  value={theme}
+                  onValueChange={(value) =>
+                    setTheme(value as 'light' | 'auto' | 'dark')
+                  }
+                >
+                  <TabsList>
+                    <TabsTrigger value="light" className="gap-1.5">
+                      <Sun className="h-3.5 w-3.5" />
+                      Light
+                    </TabsTrigger>
+                    <TabsTrigger value="auto" className="gap-1.5">
+                      <Monitor className="h-3.5 w-3.5" />
+                      Auto
+                    </TabsTrigger>
+                    <TabsTrigger value="dark" className="gap-1.5">
+                      <Moon className="h-3.5 w-3.5" />
+                      Dark
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
                 {embedUrl && (
                   <Button
                     variant="outline"
@@ -865,7 +933,13 @@ function App() {
                     'Failed to load iframe content. Check the console for details.',
                   )
                 }
-                onLoad={() => setIframeError(null)}
+                onLoad={() => {
+                  setIframeError(null);
+                  iframeRef.current?.contentWindow?.postMessage(
+                    { type: 'SET_THEME', payload: theme },
+                    '*',
+                  );
+                }}
               />
             ) : (
               <div className="flex items-center justify-center h-full">

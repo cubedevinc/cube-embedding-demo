@@ -784,6 +784,7 @@ function App() {
 
               <Button
                 type="submit"
+                variant="default"
                 disabled={loading || showEmbedTenantNameError}
                 className="w-full"
               >
@@ -962,9 +963,13 @@ function App() {
                   <p className="text-sm text-muted-foreground">
                     No embed content yet
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Fill out the form and click "Generate Session & Embed"
-                  </p>
+                  <Button
+                    variant="default"
+                    onClick={() => generateSession(true)}
+                    disabled={loading || showEmbedTenantNameError}
+                  >
+                    Generate Session & Embed
+                  </Button>
                 </div>
               </div>
             )}

@@ -15,7 +15,17 @@ import {
 
 interface UserAttribute {
   name: string;
-  value: string;
+  value: string | number;
+}
+
+// Preserves numeric values entered in the UI (e.g. tenantId 1851) so they are
+// sent as JSON numbers; the round-trip check keeps inputs like "007" as strings.
+function coerceValue(raw: string): string | number {
+  const trimmed = raw.trim();
+  if (trimmed !== '' && String(Number(trimmed)) === trimmed) {
+    return Number(trimmed);
+  }
+  return raw;
 }
 
 interface AttributeBuilderProps {
@@ -33,7 +43,7 @@ function parseAttributes(raw: string): UserAttribute[] {
 }
 
 function serializeAttributes(attrs: UserAttribute[]): string {
-  const filtered = attrs.filter((a) => a.name.trim() || a.value.trim());
+  const filtered = attrs.filter((a) => a.name.trim() || String(a.value).trim());
   if (filtered.length === 0) return '';
   return JSON.stringify(filtered);
 }
@@ -59,7 +69,10 @@ export function AttributeBuilder({ value, onChange }: AttributeBuilderProps) {
 
   const updateRow = (index: number, field: 'name' | 'value', val: string) => {
     const updated = [...attributes];
-    updated[index] = { ...updated[index], [field]: val };
+    updated[index] = {
+      ...updated[index],
+      [field]: field === 'value' ? coerceValue(val) : val,
+    };
     onChange(JSON.stringify(updated));
   };
 
@@ -77,8 +90,11 @@ export function AttributeBuilder({ value, onChange }: AttributeBuilderProps) {
         return;
       }
       for (const item of parsed) {
-        if (typeof item.name !== 'string' || typeof item.value !== 'string') {
-          setJsonError('Each item must have "name" and "value" strings');
+        if (
+          typeof item.name !== 'string' ||
+          (typeof item.value !== 'string' && typeof item.value !== 'number')
+        ) {
+          setJsonError('Each item must have a "name" string and a "value" string or number');
           return;
         }
       }
@@ -105,7 +121,7 @@ export function AttributeBuilder({ value, onChange }: AttributeBuilderProps) {
               <DialogHeader>
                 <DialogTitle>Edit Attributes as JSON</DialogTitle>
                 <DialogDescription>
-                  Array of {'{"name": "...", "value": "..."}'} objects
+                  Array of {'{"name": "...", "value": "..."}'} objects — values can be strings or numbers
                 </DialogDescription>
               </DialogHeader>
               <textarea

@@ -36,7 +36,7 @@ if (!CUBE_API_URL) {
 
 interface UserAttribute {
   name: string;
-  value: string;
+  value: string | number;
 }
 
 const STORAGE_KEY = 'cube-embedding-config';
@@ -417,7 +417,7 @@ function App() {
       if (embedType === 'chat') {
         url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/chat?session=${newSessionId}`;
       } else if (embedType === 'dashboard') {
-        url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/dashboard/${dashboardId}?session=${newSessionId}`;
+        url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/dashboard/${dashboardId}?session=${newSessionId}&allowExport=true`;
       } else {
         // app
         url = `${CUBE_EMBED_URL}/embed/d/${deploymentId}/app?session=${newSessionId}`;

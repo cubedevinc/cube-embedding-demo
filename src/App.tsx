@@ -219,6 +219,18 @@ function App() {
     }
   }, [theme, embedUrl]);
 
+  // Apply the same scheme to the demo page itself; 'auto' follows the OS
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const isDark = theme === 'dark' || (theme === 'auto' && media.matches);
+      document.documentElement.classList.toggle('dark', isDark);
+    };
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, [theme]);
+
   const generateSession = async (clearErrors = true) => {
     if (clearErrors) {
       setError(null);
